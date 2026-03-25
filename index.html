@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Système Solaire — PLAI</title>
+  <style>
+    :root {
+      --pink:   #e91e8c;
+      --dark:   #111827;
+      --panel:  190px;
+      --hdr:    56px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body { background: #000; color: #fff; display: flex; flex-direction: column; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    /* ── Header ─────────────────────────────────── */
+    header {
+      height: var(--hdr);
+      background: var(--dark);
+      border-bottom: 2px solid var(--pink);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; flex-shrink: 0;
+    }
+    .logo svg { width: 40px; height: 28px; }
+    .logo-name {
+      font-size: 20px; font-weight: 900;
+      letter-spacing: 3px; color: #fff;
+      line-height: 1;
+    }
+    .logo-name em { color: var(--pink); font-style: normal; }
+    header h1 {
+      font-size: 15px; font-weight: 600;
+      color: rgba(255,255,255,.75);
+      padding-left: 16px;
+      border-left: 2px solid rgba(255,255,255,.2);
+    }
+
+    /* ── Layout ─────────────────────────────────── */
+    header  { flex-shrink: 0; }
+    .layout { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+    canvas  { display: block; flex: 1; min-width: 0; }
+
+    /* ── Panneau contrôles ───────────────────────── */
+    .panel {
+      width: var(--panel);
+      min-width: var(--panel);
+      flex-shrink: 0;
+      background: rgba(17,24,39,.97);
+      border-left: 1px solid rgba(255,255,255,.1);
+      padding: 18px 14px;
+      display: flex; flex-direction: column; gap: 22px;
+      overflow-y: auto;
+    }
+    .section { display: flex; flex-direction: column; gap: 10px; }
+    .section-title {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--pink);
+      padding-bottom: 7px;
+      border-bottom: 1px solid rgba(233,30,140,.3);
+    }
+
+    /* boutons */
+    .btn {
+      border: none; border-radius: 8px; cursor: pointer;
+      font-size: 14px; font-weight: 600; padding: 10px;
+      width: 100%; transition: opacity .2s; color: #fff;
+      background: var(--pink);
+    }
+    .btn:hover { opacity: .82; }
+    .btn.ghost {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.18);
+    }
+    .btn.ghost:hover { background: rgba(255,255,255,.16); }
+
+    /* toggle */
+    .row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+    .toggle { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .track {
+      position: absolute; inset: 0;
+      background: #374151; border-radius: 12px;
+      cursor: pointer; transition: background .3s;
+    }
+    .track::after {
+      content: ''; position: absolute;
+      width: 18px; height: 18px; background: #fff;
+      border-radius: 50%; top: 3px; left: 3px;
+      transition: transform .3s;
+    }
+    input:checked + .track { background: var(--pink); }
+    input:checked + .track::after { transform: translateX(18px); }
+
+    /* slider */
+    .slider-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .slider-labels { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.5); }
+    .slider-val { color: var(--pink); font-weight: 700; font-size: 13px; }
+    input[type=range] { width: 100%; accent-color: var(--pink); cursor: pointer; }
+
+    /* tooltip survol planète */
+    #tip {
+      position: fixed; pointer-events: none; z-index: 50;
+      background: rgba(17,24,39,.96);
+      border: 1px solid var(--pink);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 13px; display: none; min-width: 160px;
+    }
+    #tip strong { color: var(--pink); display: block; font-size: 14px; margin-bottom: 4px; }
+    #tip span   { color: rgba(255,255,255,.8); line-height: 1.7; display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════ -->
+<header>
+  <a class="logo" href="https://portail-plai.vercel.app" title="Portail PLAI">
+    <img src="PLAI.jpg" alt="PLAI" style="height:40px;width:auto;object-fit:contain;">
+  </a>
+  <h1>🪐 Système Solaire — tailles relatives &amp; révolutions</h1>
+</header>
+
+<!-- ══ LAYOUT ══════════════════════════════════════ -->
+<div class="layout">
+  <canvas id="canvas"></canvas>
+
+  <!-- ══ PANNEAU ══ -->
+  <div class="panel">
+
+    <div class="section">
+      <div class="section-title">Lecture</div>
+      <button id="btnPlay" class="btn">⏸ Pause</button>
+      <button id="btnReset" class="btn ghost">↺ Réinitialiser</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Affichage</div>
+      <div class="row">
+        <span>Noms des planètes</span>
+        <label class="toggle"><input type="checkbox" id="chkLabels" checked><span class="track"></span></label>
+      </div>
+      <div class="row">
+        <span>Orbites</span>
+        <label class="toggle"><input type="checkbox" id="chkOrbits" checked><span class="track"></span></label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Vitesse</div>
+      <div class="slider-wrap">
+        <input type="range" id="sldSpeed" min="0.1" max="10" step="0.1" value="1">
+        <div class="slider-labels">
+          <span>0.1×</span>
+          <span class="slider-val" id="lblSpeed">1.0×</span>
+          <span>10×</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Zoom</div>
+      <div class="slider-wrap">
+        <input type="range" id="sldZoom" min="0.4" max="2.5" step="0.1" value="1">
+        <div class="slider-labels">
+          <span>−</span>
+          <span class="slider-val" id="lblZoom">1.0×</span>
+          <span>+</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- compteur terrestre -->
+    <div class="section" style="margin-top:auto">
+      <div class="section-title">Temps terrestre</div>
+      <div style="font-size:13px;line-height:2;color:rgba(255,255,255,.8)">
+        <div>Année : <strong id="lblYear" style="color:var(--pink)">0</strong></div>
+        <div>Jour   : <strong id="lblDay"  style="color:var(--pink)">0</strong></div>
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5">
+        1× = 20 s / année terrestre
+      </div>
+    </div>
+
+  </div><!-- /panel -->
+</div><!-- /layout -->
+
+<div id="tip"></div>
+
+<!-- ══ SCRIPT ══════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── État ───────────────────────────────────────────
+const state = {
+  running: true,
+  speed:   1,
+  zoom:    1,
+  labels:  true,
+  orbits:  true,
+  earthYear: 0,
+  earthDay:  0,
+};
+
+// ── Canvas ─────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+let W, H, cx, cy, baseScale;
+
+function resize() {
+  W = canvas.width  = canvas.clientWidth;
+  H = canvas.height = canvas.clientHeight;
+  cx = W / 2;  cy = H / 2;
+  baseScale = Math.min(W, H) / 1000;
+  planets.forEach(p => updateSize(p));
+  updateDistances();
+  createStars();
+}
+
+// ── Données planètes ───────────────────────────────
+const PLANET_DATA = [
+  { name:'Mercure', dist:58,   r:2.4,  color:'#A9A9A9', period:88,    angle:0 },
+  { name:'Vénus',   dist:108,  r:6.1,  color:'#E8C88A', period:225,   angle:.8 },
+  { name:'Terre',   dist:150,  r:6.4,  color:'#4169E1', period:365,   angle:1.6 },
+  { name:'Mars',    dist:228,  r:3.4,  color:'#CD5C5C', period:687,   angle:Math.PI },
+  { name:'Jupiter', dist:778,  r:30,   color:'#C8A96E', period:4333,  angle:3.9 },
+  { name:'Saturne', dist:1427, r:25,   color:'#DEB887', period:10759, angle:4.7 },
+  { name:'Uranus',  dist:2871, r:12,   color:'#7FCFCF', period:30687, angle:5.4 },
+  { name:'Neptune', dist:4498, r:11,   color:'#4682B4', period:60190, angle:6.1 },
+];
+
+let planets = PLANET_DATA.map(d => ({ ...d, px:0, py:0, drawR:0, orbitR:0 }));
+
+function updateSize(p) {
+  // taille plafonnée à 6 % du petit côté du canvas
+  p.drawR = Math.min(p.r * baseScale * 2.8, Math.min(W, H) * 0.06);
+}
+function updateDistances() {
+  // Neptune (dist max) occupe 84 % du demi-canvas → tout rentre toujours
+  const neptuneLog = Math.log(4498 + 1);
+  const maxR       = Math.min(W, H) / 2 * 0.84;
+  const factor     = maxR / neptuneLog;
+  planets.forEach(p => {
+    p.orbitR = Math.log(p.dist + 1) * factor * state.zoom;
+  });
+}
+
+// ── Étoiles ────────────────────────────────────────
+let stars = [];
+function createStars() {
+  stars = Array.from({ length: 800 }, () => ({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    r: Math.random() * 1.2,
+    a: Math.random(),
+  }));
+}
+
+// ── Dessin ─────────────────────────────────────────
+const DT = 0.016; // frame fixe ~60fps
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawStars();
+  drawSun();
+  drawPlanets();
+}
+
+function drawStars() {
+  stars.forEach(s => {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+    ctx.fill();
+  });
+}
+
+function drawSun() {
+  const r = 30 * baseScale * state.zoom;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0,   '#FFF200');
+  g.addColorStop(.75, '#FF7F00');
+  g.addColorStop(1,   '#FF4500');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = g;
+  ctx.shadowColor = '#FF6600';
+  ctx.shadowBlur  = 24;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  if (state.labels) {
+    ctx.font = `bold ${Math.max(12, 13*baseScale*2)}px Segoe UI,sans-serif`;
+    ctx.fillStyle = '#FFD700';
+    ctx.textAlign = 'center';
+    ctx.fillText('Soleil', cx, cy + r + 16);
+  }
+}
+
+function drawPlanets() {
+  planets.forEach(p => {
+    if (state.running) {
+      p.angle += (2 * Math.PI / p.period) * state.speed * DT * 30;
+    }
+    p.px = cx + Math.cos(p.angle) * p.orbitR;
+    p.py = cy + Math.sin(p.angle) * p.orbitR;
+
+    // orbite
+    if (state.orbits) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, p.orbitR, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,.45)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+
+    // planète
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, p.drawR, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur  = 6;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+
+    // nom
+    if (state.labels) {
+      const fs = Math.max(11, 12 * baseScale * 2);
+      ctx.font = `${fs}px Segoe UI,sans-serif`;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.name, p.px, p.py + p.drawR + 14);
+    }
+  });
+
+  // compteur terrestre
+  const earth = planets.find(p => p.name === 'Terre');
+  if (earth && state.running) {
+    let norm = ((earth.angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    let newDay = (norm / (Math.PI * 2)) * 365;
+    if (newDay < 30 && state.earthDay > 335) state.earthYear++;
+    state.earthDay = newDay;
+    document.getElementById('lblYear').textContent = state.earthYear;
+    document.getElementById('lblDay').textContent  = Math.floor(state.earthDay);
+  }
+}
+
+function drawRingHalf(p, isBack) {
+  // En canvas (y vers le bas) :
+  //   arc(r, π→0, clockwise=false)  → passe par le HAUT  = moitié arrière
+  //   arc(r, 0→π, clockwise=false)  → passe par le BAS   = moitié avant
+  const rO = p.drawR * 2.4;
+  const rI = p.drawR * 1.35;
+  const sy = 0.42;
+
+  ctx.save();
+  ctx.translate(p.px, p.py);
+  ctx.scale(1, sy);
+  ctx.beginPath();
+
+  if (isBack) {
+    // Demi-anneau ARRIÈRE (haut de l'ellipse, derrière la planète)
+    ctx.arc(0, 0, rO, Math.PI, 0,        false); // outer haut : G→H→D
+    ctx.arc(0, 0, rI, 0,        Math.PI, false); // inner bas  : D→B→G  (ferme le donut)
+  } else {
+    // Demi-anneau AVANT (bas de l'ellipse, devant la planète)
+    ctx.arc(0, 0, rO, 0,        Math.PI, false); // outer bas  : D→B→G
+    ctx.arc(0, 0, rI, Math.PI, 0,        false); // inner haut : G→H→D  (ferme le donut)
+  }
+
+  ctx.closePath();
+  ctx.fillStyle = isBack ? 'rgba(200,170,100,0.45)' : 'rgba(215,185,115,0.72)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(170,140,70,0.35)';
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── Boucle ─────────────────────────────────────────
+function loop() {
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ── Contrôles ──────────────────────────────────────
+document.getElementById('btnPlay').addEventListener('click', () => {
+  state.running = !state.running;
+  document.getElementById('btnPlay').textContent = state.running ? '⏸ Pause' : '▶ Lecture';
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  state.earthYear = 0;
+  state.earthDay  = 0;
+  planets.forEach((p, i) => { p.angle = PLANET_DATA[i].angle; });
+  document.getElementById('lblYear').textContent = 0;
+  document.getElementById('lblDay').textContent  = 0;
+});
+
+document.getElementById('chkLabels').addEventListener('change', e => { state.labels = e.target.checked; });
+document.getElementById('chkOrbits').addEventListener('change', e => { state.orbits = e.target.checked; });
+
+document.getElementById('sldSpeed').addEventListener('input', e => {
+  state.speed = parseFloat(e.target.value);
+  document.getElementById('lblSpeed').textContent = `${state.speed.toFixed(1)}×`;
+});
+
+document.getElementById('sldZoom').addEventListener('input', e => {
+  state.zoom = parseFloat(e.target.value);
+  document.getElementById('lblZoom').textContent = `${state.zoom.toFixed(1)}×`;
+  updateDistances();
+});
+
+// survol planète
+canvas.addEventListener('mousemove', e => {
+  const tip = document.getElementById('tip');
+  const hit = planets.find(p => {
+    const dx = e.clientX - p.px, dy = e.clientY - p.py;
+    return Math.sqrt(dx*dx + dy*dy) <= Math.max(p.drawR, 8);
+  });
+  if (hit) {
+    tip.style.display = 'block';
+    tip.style.left = `${e.clientX + 14}px`;
+    tip.style.top  = `${e.clientY - 10}px`;
+    tip.innerHTML  = `<strong>${hit.name}</strong>
+      <span>Distance : ~${hit.dist} M km</span>
+      <span>Révolution : ${hit.period} jours terrestres</span>`;
+  } else {
+    tip.style.display = 'none';
+  }
+});
+
+// resize
+window.addEventListener('resize', resize);
+
+// ── Init ───────────────────────────────────────────
+resize();
+loop();
+</script>
+</body>
+</html>
