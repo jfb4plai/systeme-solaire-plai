@@ -220,10 +220,10 @@
     </div>
 
     <div class="section">
-      <div class="section-title">Durée fixée</div>
+      <div class="section-title">Durée fixée (max 10 ans)</div>
       <div style="display:flex;gap:8px">
         <div style="flex:1">
-          <label style="font-size:10px;color:rgba(255,255,255,.5)">Années (max 10)</label>
+          <label style="font-size:10px;color:rgba(255,255,255,.5)">Années</label>
           <input type="number" id="inpTargetYears" min="0" max="10" value="0"
             style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:6px;color:#fff;padding:6px;font-size:13px;margin-top:3px">
         </div>
@@ -235,7 +235,8 @@
       </div>
       <button id="btnTargetStart" class="btn ghost">▶ Lancer pour cette durée</button>
       <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5">
-        La lecture se met en pause automatiquement à la fin de la durée. "Lecture" la relance sans limite ; "Réinitialiser" annule la cible.
+        La lecture se met en pause automatiquement à la fin de la durée. "Lecture" la relance sans limite ; "Réinitialiser" annule la cible.<br>
+        1 année = 365 jours (années bissextiles ignorées, sans intérêt pédagogique ici).
       </div>
     </div>
 
@@ -549,14 +550,23 @@ document.getElementById('btnReset').addEventListener('click', () => {
   document.getElementById('lblDay').textContent  = 0;
 });
 
+const inpTargetYears = document.getElementById('inpTargetYears');
+const inpTargetDays  = document.getElementById('inpTargetDays');
+
+// recadrage dès que l'utilisateur quitte le champ (pas seulement au clic sur "Lancer")
+inpTargetYears.addEventListener('change', () => {
+  inpTargetYears.value = Math.max(0, Math.min(10, parseInt(inpTargetYears.value, 10) || 0));
+});
+inpTargetDays.addEventListener('change', () => {
+  inpTargetDays.value = Math.max(0, Math.min(364, parseInt(inpTargetDays.value, 10) || 0));
+});
+
 document.getElementById('btnTargetStart').addEventListener('click', () => {
-  const yearsInput = document.getElementById('inpTargetYears');
-  const daysInput  = document.getElementById('inpTargetDays');
-  let years = Math.max(0, Math.min(10,  parseInt(yearsInput.value, 10) || 0));
-  let days  = Math.max(0, Math.min(364, parseInt(daysInput.value,  10) || 0));
+  let years = Math.max(0, Math.min(10,  parseInt(inpTargetYears.value, 10) || 0));
+  let days  = Math.max(0, Math.min(364, parseInt(inpTargetDays.value,  10) || 0));
   let totalDays = Math.min(years * 365 + days, 10 * 365); // plafond 10 ans
-  yearsInput.value = years;
-  daysInput.value  = days;
+  inpTargetYears.value = years;
+  inpTargetDays.value  = days;
   if (totalDays <= 0) return;
 
   state.playTarget = state.earthDaysElapsed + totalDays;
