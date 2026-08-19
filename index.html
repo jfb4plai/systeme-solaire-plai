@@ -233,6 +233,7 @@ const state = {
   trueScale: false,
   earthYear: 0,
   earthDay:  0,
+  earthDaysElapsed: 0,
 };
 
 // ── Canvas ─────────────────────────────────────────
@@ -393,13 +394,14 @@ function drawPlanets() {
     }
   });
 
-  // compteur terrestre
-  const earth = planets.find(p => p.name === 'Terre');
-  if (earth && state.running) {
-    let norm = ((earth.angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-    let newDay = (norm / (Math.PI * 2)) * 365;
-    if (newDay < 30 && state.earthDay > 335) state.earthYear++;
-    state.earthDay = newDay;
+  // compteur terrestre : jours écoulés depuis le lancement, indépendant de
+  // l'angle de départ de la Terre (1.6 rad, choisi juste pour l'affichage
+  // initial) — sinon la 1ère "année" affichée est tronquée et Année/Jour
+  // ne correspondent plus au temps réellement simulé.
+  if (state.running) {
+    state.earthDaysElapsed += state.speed * DAYS_PER_FRAME_AT_1X;
+    state.earthYear = Math.floor(state.earthDaysElapsed / 365);
+    state.earthDay  = state.earthDaysElapsed % 365;
     document.getElementById('lblYear').textContent = state.earthYear;
     document.getElementById('lblDay').textContent  = Math.floor(state.earthDay);
   }
@@ -452,6 +454,7 @@ document.getElementById('btnPlay').addEventListener('click', () => {
 document.getElementById('btnReset').addEventListener('click', () => {
   state.earthYear = 0;
   state.earthDay  = 0;
+  state.earthDaysElapsed = 0;
   planets.forEach((p, i) => { p.angle = PLANET_DATA[i].angle; });
   document.getElementById('lblYear').textContent = 0;
   document.getElementById('lblDay').textContent  = 0;
