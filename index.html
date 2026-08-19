@@ -452,9 +452,11 @@ document.getElementById('sldZoom').addEventListener('input', e => {
 
 // survol planète
 canvas.addEventListener('mousemove', e => {
-  const tip = document.getElementById('tip');
+  const tip  = document.getElementById('tip');
+  const rect = canvas.getBoundingClientRect(); // e.clientX/Y sont relatifs à la fenêtre, p.px/py au canvas
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   const hit = planets.find(p => {
-    const dx = e.clientX - p.px, dy = e.clientY - p.py;
+    const dx = mx - p.px, dy = my - p.py;
     return Math.sqrt(dx*dx + dy*dy) <= Math.max(p.drawR, 8);
   });
   if (hit) {
