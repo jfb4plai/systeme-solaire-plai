@@ -220,6 +220,26 @@
     </div>
 
     <div class="section">
+      <div class="section-title">Durée fixée</div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label style="font-size:10px;color:rgba(255,255,255,.5)">Années (max 10)</label>
+          <input type="number" id="inpTargetYears" min="0" max="10" value="0"
+            style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:6px;color:#fff;padding:6px;font-size:13px;margin-top:3px">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:10px;color:rgba(255,255,255,.5)">Jours</label>
+          <input type="number" id="inpTargetDays" min="0" max="364" value="0"
+            style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:6px;color:#fff;padding:6px;font-size:13px;margin-top:3px">
+        </div>
+      </div>
+      <button id="btnTargetStart" class="btn ghost">▶ Lancer pour cette durée</button>
+      <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5">
+        La lecture se met en pause automatiquement à la fin de la durée. "Lecture" la relance sans limite ; "Réinitialiser" annule la cible.
+      </div>
+    </div>
+
+    <div class="section">
       <div class="section-title">Affichage</div>
       <div class="row">
         <span>Noms des planètes</span>
@@ -316,6 +336,7 @@ const state = {
   earthDay:  0,
   earthDaysElapsed: 0,
   visible: {}, // { [nomPlanète]: bool } — rempli après PLANET_DATA
+  playTarget: null, // earthDaysElapsed cible pour la pause auto (durée fixée), null = désactivé
 };
 
 // ── Canvas ─────────────────────────────────────────
@@ -490,6 +511,15 @@ function drawPlanets() {
   // ne correspondent plus au temps réellement simulé.
   if (state.running) {
     state.earthDaysElapsed += state.speed * DAYS_PER_FRAME_AT_1X;
+
+    // durée fixée : pause automatique dès que la cible est atteinte
+    if (state.playTarget !== null && state.earthDaysElapsed >= state.playTarget) {
+      state.earthDaysElapsed = state.playTarget;
+      state.running = false;
+      state.playTarget = null;
+      document.getElementById('btnPlay').textContent = '▶ Lecture';
+    }
+
     state.earthYear = Math.floor(state.earthDaysElapsed / 365);
     state.earthDay  = state.earthDaysElapsed % 365;
     document.getElementById('lblYear').textContent = state.earthYear;
@@ -513,9 +543,25 @@ document.getElementById('btnReset').addEventListener('click', () => {
   state.earthYear = 0;
   state.earthDay  = 0;
   state.earthDaysElapsed = 0;
+  state.playTarget = null;
   planets.forEach((p, i) => { p.angle = PLANET_DATA[i].angle; });
   document.getElementById('lblYear').textContent = 0;
   document.getElementById('lblDay').textContent  = 0;
+});
+
+document.getElementById('btnTargetStart').addEventListener('click', () => {
+  const yearsInput = document.getElementById('inpTargetYears');
+  const daysInput  = document.getElementById('inpTargetDays');
+  let years = Math.max(0, Math.min(10,  parseInt(yearsInput.value, 10) || 0));
+  let days  = Math.max(0, Math.min(364, parseInt(daysInput.value,  10) || 0));
+  let totalDays = Math.min(years * 365 + days, 10 * 365); // plafond 10 ans
+  yearsInput.value = years;
+  daysInput.value  = days;
+  if (totalDays <= 0) return;
+
+  state.playTarget = state.earthDaysElapsed + totalDays;
+  state.running = true;
+  document.getElementById('btnPlay').textContent = '⏸ Pause';
 });
 
 document.getElementById('chkLabels').addEventListener('change', e => { state.labels = e.target.checked; });
