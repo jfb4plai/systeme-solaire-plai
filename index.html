@@ -59,6 +59,16 @@
       display: flex; flex-direction: column; gap: 22px;
       overflow-y: auto;
     }
+    .panel-left {
+      width: 160px;
+      min-width: 160px;
+      flex-shrink: 0;
+      background: rgba(17,24,39,.97);
+      border-right: 1px solid rgba(255,255,255,.1);
+      padding: 18px 14px;
+      display: flex; flex-direction: column; gap: 22px;
+      overflow-y: auto;
+    }
     .section { display: flex; flex-direction: column; gap: 10px; }
     .section-title {
       font-size: 10px; font-weight: 700;
@@ -100,6 +110,14 @@
     input:checked + .track { background: var(--pink); }
     input:checked + .track::after { transform: translateX(18px); }
 
+    /* toggle compact (colonne planètes) */
+    .toggle.sm { width: 32px; height: 18px; }
+    .toggle.sm .track::after { width: 12px; height: 12px; top: 3px; left: 3px; }
+    .toggle.sm input:checked + .track::after { transform: translateX(14px); }
+    .planet-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; justify-content: space-between; }
+    .planet-row .name { display: flex; align-items: center; gap: 7px; }
+    .planet-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
     /* slider */
     .slider-wrap { display: flex; flex-direction: column; gap: 6px; }
     .slider-labels { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.5); }
@@ -130,6 +148,53 @@
 
 <!-- ══ LAYOUT ══════════════════════════════════════ -->
 <div class="layout">
+
+  <!-- ══ PANNEAU GAUCHE — sélection planètes ══ -->
+  <div class="panel-left">
+    <div class="section">
+      <div class="section-title">Planètes affichées</div>
+      <div class="planet-row" style="font-weight:700">
+        <span class="name">Toutes</span>
+        <label class="toggle sm"><input type="checkbox" id="chkAll" checked><span class="track"></span></label>
+      </div>
+      <div class="planet-row">
+        <span class="name"><span class="planet-dot" style="background:#A9A9A9"></span>Mercure</span>
+        <label class="toggle sm"><input type="checkbox" class="planet-toggle" data-planet="Mercure" checked><span class="track"></span></label>
+      </div>
+      <div class="planet-row">
+        <span class="name"><span class="planet-dot" style="background:#E8C88A"></span>Vénus</span>
+        <label class="toggle sm"><input type="checkbox" class="planet-toggle" data-planet="Vénus" checked><span class="track"></span></label>
+      </div>
+      <div class="planet-row">
+        <span class="name"><span class="planet-dot" style="background:#4169E1"></span>Terre</span>
+        <label class="toggle sm"><input type="checkbox" class="planet-toggle" data-planet="Terre" checked><span class="track"></span></label>
+      </div>
+      <div class="planet-row">
+        <span class="name"><span class="planet-dot" style="background:#CD5C5C"></span>Mars</span>
+        <label class="toggle sm"><input type="checkbox" class="planet-toggle" data-planet="Mars" checked><span class="track"></span></label>
+      </div>
+      <div class="planet-row">
+        <span class="name"><span class="planet-dot" style="background:#C8A96E"></span>Jupiter</span>
+        <label class="toggle sm"><input type="checkbox" class="planet-toggle" data-planet="Jupiter" checked><span class="track"></span></label>
+      </div>
+      <div class="planet-row">
+        <span class="name"><span class="planet-dot" style="background:#DEB887"></span>Saturne</span>
+        <label class="toggle sm"><input type="checkbox" class="planet-toggle" data-planet="Saturne" checked><span class="track"></span></label>
+      </div>
+      <div class="planet-row">
+        <span class="name"><span class="planet-dot" style="background:#7FCFCF"></span>Uranus</span>
+        <label class="toggle sm"><input type="checkbox" class="planet-toggle" data-planet="Uranus" checked><span class="track"></span></label>
+      </div>
+      <div class="planet-row">
+        <span class="name"><span class="planet-dot" style="background:#4682B4"></span>Neptune</span>
+        <label class="toggle sm"><input type="checkbox" class="planet-toggle" data-planet="Neptune" checked><span class="track"></span></label>
+      </div>
+    </div>
+    <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5">
+      Pour isoler une planète (exercice) ou en comparer deux (ex. durée d'année Terre/Mars).
+    </div>
+  </div>
+
   <canvas id="canvas"></canvas>
 
   <!-- ══ PANNEAU ══ -->
@@ -234,6 +299,7 @@ const state = {
   earthYear: 0,
   earthDay:  0,
   earthDaysElapsed: 0,
+  visible: {}, // { [nomPlanète]: bool } — rempli après PLANET_DATA
 };
 
 // ── Canvas ─────────────────────────────────────────
@@ -265,6 +331,7 @@ const PLANET_DATA = [
 ];
 
 let planets = PLANET_DATA.map(d => ({ ...d, px:0, py:0, drawR:0, orbitR:0 }));
+PLANET_DATA.forEach(d => { state.visible[d.name] = true; });
 
 function updateSizes() {
   if (state.trueScale) {
@@ -366,6 +433,8 @@ function drawPlanets() {
     : planets;
 
   order.forEach(p => {
+    if (!state.visible[p.name]) return; // planète décochée dans la colonne gauche
+
     // orbite
     if (state.orbits) {
       ctx.beginPath();
@@ -464,6 +533,29 @@ document.getElementById('chkLabels').addEventListener('change', e => { state.lab
 document.getElementById('chkOrbits').addEventListener('change', e => { state.orbits = e.target.checked; });
 document.getElementById('chkTrueScale').addEventListener('change', e => { state.trueScale = e.target.checked; updateSizes(); });
 
+// sélection des planètes affichées (colonne gauche)
+const planetToggles = document.querySelectorAll('.planet-toggle');
+const chkAll = document.getElementById('chkAll');
+
+function syncChkAll() {
+  chkAll.checked = [...planetToggles].every(cb => cb.checked);
+}
+
+planetToggles.forEach(cb => {
+  cb.addEventListener('change', () => {
+    state.visible[cb.dataset.planet] = cb.checked;
+    syncChkAll();
+  });
+});
+
+chkAll.addEventListener('change', e => {
+  const val = e.target.checked;
+  planetToggles.forEach(cb => {
+    cb.checked = val;
+    state.visible[cb.dataset.planet] = val;
+  });
+});
+
 document.getElementById('sldSpeed').addEventListener('input', e => {
   state.speed = parseFloat(e.target.value);
   document.getElementById('lblSpeed').textContent = `${state.speed.toFixed(1)}×`;
@@ -481,6 +573,7 @@ canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect(); // e.clientX/Y sont relatifs à la fenêtre, p.px/py au canvas
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   const hit = planets.find(p => {
+    if (!state.visible[p.name]) return false;
     const dx = mx - p.px, dy = my - p.py;
     return Math.sqrt(dx*dx + dy*dy) <= Math.max(p.drawR, 8);
   });
