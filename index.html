@@ -193,6 +193,19 @@
     <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5">
       Pour isoler une planète (exercice) ou en comparer deux (ex. durée d'année Terre/Mars).
     </div>
+
+    <div class="section">
+      <div class="section-title">À savoir</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.55);line-height:1.6">
+        <strong style="color:var(--pink)">Vue 2D</strong> vue de dessus : ne représente pas les vraies positions des planètes dans l'espace (plan unique, inclinaisons réelles des orbites ignorées).
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,.55);line-height:1.6">
+        <strong style="color:var(--pink)">Positions de départ</strong> réparties arbitrairement au lancement (pour la lisibilité), pas calées sur une date réelle. Deux planètes alignées au démarrage ne le sont pas forcément en vrai.
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,.55);line-height:1.6">
+        <strong style="color:var(--pink)">Orbites</strong> dessinées en cercles parfaits ; les vraies orbites sont légèrement elliptiques (surtout Mercure).
+      </div>
+    </div>
   </div>
 
   <canvas id="canvas"></canvas>
@@ -277,6 +290,9 @@
         <tr><td style="padding:2px 0">Uranus</td><td style="padding:2px 0;text-align:right">1,9×</td><td style="padding:2px 0;text-align:right">4,0×</td></tr>
         <tr><td style="padding:2px 0">Neptune</td><td style="padding:2px 0;text-align:right">1,7×</td><td style="padding:2px 0;text-align:right">3,9×</td></tr>
       </table>
+      <div style="font-size:10.5px;color:rgba(255,255,255,.55);line-height:1.6;margin-top:8px">
+        <strong style="color:var(--pink)">Soleil</strong> : compressé bien plus fort encore que les planètes (survolez-le pour le facteur exact) — à la vraie échelle il faudrait un cercle couvrant la quasi-totalité de l'écran.
+      </div>
     </div>
 
   </div><!-- /panel -->
@@ -306,6 +322,7 @@ const state = {
 const canvas = document.getElementById('canvas');
 const ctx    = canvas.getContext('2d');
 let W, H, cx, cy, baseScale;
+let sunR = 0; // rayon affiché du Soleil, recalculé à chaque frame dans drawSun()
 
 function resize() {
   W = canvas.width  = canvas.clientWidth;
@@ -394,7 +411,11 @@ function drawStars() {
 }
 
 function drawSun() {
-  const r = 30 * baseScale * state.zoom;
+  // taille fixe comme les planètes (indépendante du zoom, qui ne change que
+  // les distances) — avant, le Soleil grossissait avec le zoom mais pas les
+  // planètes, ce qui faussait encore plus leur rapport de taille affiché.
+  sunR = 30 * baseScale;
+  const r = sunR;
   const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
   g.addColorStop(0,   '#FFF200');
   g.addColorStop(.75, '#FF7F00');
@@ -572,6 +593,24 @@ canvas.addEventListener('mousemove', e => {
   const tip  = document.getElementById('tip');
   const rect = canvas.getBoundingClientRect(); // e.clientX/Y sont relatifs à la fenêtre, p.px/py au canvas
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+  // survol Soleil : rayon réel ≈ 696 340 km, soit ~109× le diamètre terrestre
+  const sunDx = mx - cx, sunDy = my - cy;
+  if (Math.sqrt(sunDx*sunDx + sunDy*sunDy) <= Math.max(sunR, 8)) {
+    const earthDrawR = planets.find(p => p.name === 'Terre').drawR;
+    const SUN_REAL_DIAM_RATIO = 109.3;
+    const appRatio  = sunR / earthDrawR;
+    const compression = SUN_REAL_DIAM_RATIO / appRatio;
+    tip.style.display = 'block';
+    tip.style.left = `${e.clientX + 14}px`;
+    tip.style.top  = `${e.clientY - 10}px`;
+    tip.innerHTML  = `<strong>Soleil</strong>
+      <span>Diamètre réel : ~1 392 000 km, soit ${SUN_REAL_DIAM_RATIO.toFixed(0)}× celui de la Terre</span>
+      <span>Affiché ici : ~${appRatio.toFixed(1)}× la Terre — compressé environ ${compression.toFixed(0)}× par rapport à la réalité</span>
+      <span>À la vraie échelle, il couvrirait la quasi-totalité de l'écran</span>`;
+    return;
+  }
+
   const hit = planets.find(p => {
     if (!state.visible[p.name]) return false;
     const dx = mx - p.px, dy = my - p.py;
