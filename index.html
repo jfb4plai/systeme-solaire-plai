@@ -151,6 +151,10 @@
         <span>Orbites</span>
         <label class="toggle"><input type="checkbox" id="chkOrbits" checked><span class="track"></span></label>
       </div>
+      <div class="row">
+        <span>Tailles réelles<br><span style="font-size:9.5px;color:rgba(255,255,255,.4)">(Terre = 1)</span></span>
+        <label class="toggle"><input type="checkbox" id="chkTrueScale"><span class="track"></span></label>
+      </div>
     </div>
 
     <div class="section">
@@ -226,6 +230,7 @@ const state = {
   zoom:    1,
   labels:  true,
   orbits:  true,
+  trueScale: false,
   earthYear: 0,
   earthDay:  0,
 };
@@ -261,9 +266,17 @@ const PLANET_DATA = [
 let planets = PLANET_DATA.map(d => ({ ...d, px:0, py:0, drawR:0, orbitR:0 }));
 
 function updateSizes() {
-  // toutes les planètes sont plafonnées par le MÊME facteur, dérivé de la plus
-  // grosse (Jupiter) — sinon Jupiter et Saturne finissent écrêtées à la même
-  // taille (cap absolu atteint par les deux) et perdent leur proportion réelle.
+  if (state.trueScale) {
+    // Terre = 1 : chaque planète = son ratio de diamètre réel × la taille affichée
+    // de la Terre. Aucun plafond — sert justement à voir si Jupiter "passe".
+    const earthUnit = 6.4 * baseScale * 2.8; // taille de référence (Terre, r réel≈6.4)
+    planets.forEach(p => { p.drawR = p.realDiamRatio * earthUnit; });
+    return;
+  }
+  // Mode compact (par défaut) : toutes les planètes plafonnées par le MÊME
+  // facteur, dérivé de la plus grosse (Jupiter) — sinon Jupiter et Saturne
+  // finissent écrêtées à la même taille (cap absolu atteint par les deux)
+  // et perdent leur proportion réelle.
   const cap    = Math.min(W, H) * 0.06;
   const maxR   = Math.max(...PLANET_DATA.map(d => d.r));
   const rawMax = maxR * baseScale * 2.8;
@@ -438,6 +451,7 @@ document.getElementById('btnReset').addEventListener('click', () => {
 
 document.getElementById('chkLabels').addEventListener('change', e => { state.labels = e.target.checked; });
 document.getElementById('chkOrbits').addEventListener('change', e => { state.orbits = e.target.checked; });
+document.getElementById('chkTrueScale').addEventListener('change', e => { state.trueScale = e.target.checked; updateSizes(); });
 
 document.getElementById('sldSpeed').addEventListener('input', e => {
   state.speed = parseFloat(e.target.value);
@@ -463,7 +477,7 @@ canvas.addEventListener('mousemove', e => {
     const earthR    = PLANET_DATA.find(d => d.name === 'Terre').r;
     const appRatio  = (hit.r / earthR).toFixed(hit.r / earthR >= 10 ? 0 : 1);
     const realRatio = hit.realDiamRatio.toFixed(hit.realDiamRatio >= 10 ? 0 : 1);
-    const compressed = appRatio !== realRatio;
+    const compressed = !state.trueScale && appRatio !== realRatio;
     tip.style.display = 'block';
     tip.style.left = `${e.clientX + 14}px`;
     tip.style.top  = `${e.clientY - 10}px`;
