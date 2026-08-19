@@ -497,38 +497,6 @@ function drawPlanets() {
   }
 }
 
-function drawRingHalf(p, isBack) {
-  // En canvas (y vers le bas) :
-  //   arc(r, π→0, clockwise=false)  → passe par le HAUT  = moitié arrière
-  //   arc(r, 0→π, clockwise=false)  → passe par le BAS   = moitié avant
-  const rO = p.drawR * 2.4;
-  const rI = p.drawR * 1.35;
-  const sy = 0.42;
-
-  ctx.save();
-  ctx.translate(p.px, p.py);
-  ctx.scale(1, sy);
-  ctx.beginPath();
-
-  if (isBack) {
-    // Demi-anneau ARRIÈRE (haut de l'ellipse, derrière la planète)
-    ctx.arc(0, 0, rO, Math.PI, 0,        false); // outer haut : G→H→D
-    ctx.arc(0, 0, rI, 0,        Math.PI, false); // inner bas  : D→B→G  (ferme le donut)
-  } else {
-    // Demi-anneau AVANT (bas de l'ellipse, devant la planète)
-    ctx.arc(0, 0, rO, 0,        Math.PI, false); // outer bas  : D→B→G
-    ctx.arc(0, 0, rI, Math.PI, 0,        false); // inner haut : G→H→D  (ferme le donut)
-  }
-
-  ctx.closePath();
-  ctx.fillStyle = isBack ? 'rgba(200,170,100,0.45)' : 'rgba(215,185,115,0.72)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(170,140,70,0.35)';
-  ctx.lineWidth = 0.6;
-  ctx.stroke();
-  ctx.restore();
-}
-
 // ── Boucle ─────────────────────────────────────────
 function loop() {
   draw();
