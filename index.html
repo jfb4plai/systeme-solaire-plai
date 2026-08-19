@@ -229,7 +229,7 @@
         </div>
         <div style="flex:1">
           <label style="font-size:10px;color:rgba(255,255,255,.5)">Jours</label>
-          <input type="number" id="inpTargetDays" min="0" max="364" value="0"
+          <input type="number" id="inpTargetDays" min="0" value="0"
             style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:6px;color:#fff;padding:6px;font-size:13px;margin-top:3px">
         </div>
       </div>
@@ -553,20 +553,24 @@ document.getElementById('btnReset').addEventListener('click', () => {
 const inpTargetYears = document.getElementById('inpTargetYears');
 const inpTargetDays  = document.getElementById('inpTargetDays');
 
-// recadrage dès que l'utilisateur quitte le champ (pas seulement au clic sur "Lancer")
-inpTargetYears.addEventListener('change', () => {
-  inpTargetYears.value = Math.max(0, Math.min(10, parseInt(inpTargetYears.value, 10) || 0));
-});
-inpTargetDays.addEventListener('change', () => {
-  inpTargetDays.value = Math.max(0, Math.min(364, parseInt(inpTargetDays.value, 10) || 0));
-});
-
-document.getElementById('btnTargetStart').addEventListener('click', () => {
-  let years = Math.max(0, Math.min(10,  parseInt(inpTargetYears.value, 10) || 0));
-  let days  = Math.max(0, Math.min(364, parseInt(inpTargetDays.value,  10) || 0));
-  let totalDays = Math.min(years * 365 + days, 10 * 365); // plafond 10 ans
+// 500 jours → converti en 1 an + 135 jours plutôt que tronqué à 364 ;
+// le tout plafonné à 10 ans au total.
+function normalizeTargetInputs() {
+  let years = Math.max(0, parseInt(inpTargetYears.value, 10) || 0);
+  let days  = Math.max(0, parseInt(inpTargetDays.value,  10) || 0);
+  years += Math.floor(days / 365);
+  days   = days % 365;
+  if (years * 365 + days > 10 * 365) { years = 10; days = 0; } // plafond total 10 ans
   inpTargetYears.value = years;
   inpTargetDays.value  = days;
+  return { years, days, totalDays: years * 365 + days };
+}
+
+inpTargetYears.addEventListener('change', normalizeTargetInputs);
+inpTargetDays.addEventListener('change', normalizeTargetInputs);
+
+document.getElementById('btnTargetStart').addEventListener('click', () => {
+  const { totalDays } = normalizeTargetInputs();
   if (totalDays <= 0) return;
 
   state.playTarget = state.earthDaysElapsed + totalDays;
