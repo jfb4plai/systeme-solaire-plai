@@ -189,6 +189,27 @@
       </div>
     </div>
 
+    <div class="section">
+      <div class="section-title">Échelle</div>
+      <div style="font-size:10.5px;color:rgba(255,255,255,.55);line-height:1.6">
+        Distances orbitales à l'échelle <strong style="color:var(--pink)">logarithmique</strong> : l'ordre est respecté, pas les distances réelles (Neptune, à 4498 M km, serait hors écran en échelle linéaire).
+      </div>
+      <div style="font-size:10.5px;color:rgba(255,255,255,.55);line-height:1.6;margin-top:8px">
+        Tailles : Mercure/Vénus/Terre/Mars ≈ proportions réelles. Les 4 géantes sont <strong style="color:var(--pink)">compressées</strong> (sinon Jupiter écraserait tout à l'écran) — diamètre affiché vs diamètre réel, en fois la Terre :
+      </div>
+      <table style="width:100%;font-size:10px;border-collapse:collapse;color:rgba(255,255,255,.75);margin-top:4px">
+        <tr style="color:var(--pink);font-weight:700">
+          <td style="padding:2px 0">Planète</td>
+          <td style="padding:2px 0;text-align:right">App</td>
+          <td style="padding:2px 0;text-align:right">Réel</td>
+        </tr>
+        <tr><td style="padding:2px 0">Jupiter</td><td style="padding:2px 0;text-align:right">4,7×</td><td style="padding:2px 0;text-align:right">11,0×</td></tr>
+        <tr><td style="padding:2px 0">Saturne</td><td style="padding:2px 0;text-align:right">3,9×</td><td style="padding:2px 0;text-align:right">9,1×</td></tr>
+        <tr><td style="padding:2px 0">Uranus</td><td style="padding:2px 0;text-align:right">1,9×</td><td style="padding:2px 0;text-align:right">4,0×</td></tr>
+        <tr><td style="padding:2px 0">Neptune</td><td style="padding:2px 0;text-align:right">1,7×</td><td style="padding:2px 0;text-align:right">3,9×</td></tr>
+      </table>
+    </div>
+
   </div><!-- /panel -->
 </div><!-- /layout -->
 
@@ -219,28 +240,35 @@ function resize() {
   H = canvas.height = canvas.clientHeight;
   cx = W / 2;  cy = H / 2;
   baseScale = Math.min(W, H) / 1000;
-  planets.forEach(p => updateSize(p));
+  updateSizes();
   updateDistances();
   createStars();
 }
 
 // ── Données planètes ───────────────────────────────
+// realDiamRatio = diamètre réel / diamètre Terre (rayons équatoriaux réels, source : NASA)
 const PLANET_DATA = [
-  { name:'Mercure', dist:58,   r:2.4,  color:'#A9A9A9', period:88,    angle:0 },
-  { name:'Vénus',   dist:108,  r:6.1,  color:'#E8C88A', period:225,   angle:.8 },
-  { name:'Terre',   dist:150,  r:6.4,  color:'#4169E1', period:365,   angle:1.6 },
-  { name:'Mars',    dist:228,  r:3.4,  color:'#CD5C5C', period:687,   angle:Math.PI },
-  { name:'Jupiter', dist:778,  r:30,   color:'#C8A96E', period:4333,  angle:3.9 },
-  { name:'Saturne', dist:1427, r:25,   color:'#DEB887', period:10759, angle:4.7 },
-  { name:'Uranus',  dist:2871, r:12,   color:'#7FCFCF', period:30687, angle:5.4 },
-  { name:'Neptune', dist:4498, r:11,   color:'#4682B4', period:60190, angle:6.1 },
+  { name:'Mercure', dist:58,   r:2.4,  color:'#A9A9A9', period:88,    angle:0,        realDiamRatio: 0.38 },
+  { name:'Vénus',   dist:108,  r:6.1,  color:'#E8C88A', period:225,   angle:.8,       realDiamRatio: 0.95 },
+  { name:'Terre',   dist:150,  r:6.4,  color:'#4169E1', period:365,   angle:1.6,      realDiamRatio: 1.0  },
+  { name:'Mars',    dist:228,  r:3.4,  color:'#CD5C5C', period:687,   angle:Math.PI,  realDiamRatio: 0.53 },
+  { name:'Jupiter', dist:778,  r:30,   color:'#C8A96E', period:4333,  angle:3.9,      realDiamRatio: 11.0 },
+  { name:'Saturne', dist:1427, r:25,   color:'#DEB887', period:10759, angle:4.7,      realDiamRatio: 9.1  },
+  { name:'Uranus',  dist:2871, r:12,   color:'#7FCFCF', period:30687, angle:5.4,      realDiamRatio: 4.0  },
+  { name:'Neptune', dist:4498, r:11,   color:'#4682B4', period:60190, angle:6.1,      realDiamRatio: 3.9  },
 ];
 
 let planets = PLANET_DATA.map(d => ({ ...d, px:0, py:0, drawR:0, orbitR:0 }));
 
-function updateSize(p) {
-  // taille plafonnée à 6 % du petit côté du canvas
-  p.drawR = Math.min(p.r * baseScale * 2.8, Math.min(W, H) * 0.06);
+function updateSizes() {
+  // toutes les planètes sont plafonnées par le MÊME facteur, dérivé de la plus
+  // grosse (Jupiter) — sinon Jupiter et Saturne finissent écrêtées à la même
+  // taille (cap absolu atteint par les deux) et perdent leur proportion réelle.
+  const cap    = Math.min(W, H) * 0.06;
+  const maxR   = Math.max(...PLANET_DATA.map(d => d.r));
+  const rawMax = maxR * baseScale * 2.8;
+  const shrink = rawMax > cap ? cap / rawMax : 1;
+  planets.forEach(p => { p.drawR = p.r * baseScale * 2.8 * shrink; });
 }
 function updateDistances() {
   // Neptune (dist max) occupe 84 % du demi-canvas → tout rentre toujours
@@ -264,7 +292,9 @@ function createStars() {
 }
 
 // ── Dessin ─────────────────────────────────────────
-const DT = 0.016; // frame fixe ~60fps
+const FPS         = 60;
+const YEAR_SECONDS = 20; // 1× = 20 s / année terrestre (annoncé dans le panneau)
+const DAYS_PER_FRAME_AT_1X = (365 / YEAR_SECONDS) / FPS; // jours simulés par frame à vitesse 1×
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
@@ -307,7 +337,7 @@ function drawSun() {
 function drawPlanets() {
   planets.forEach(p => {
     if (state.running) {
-      p.angle += (2 * Math.PI / p.period) * state.speed * DT * 30;
+      p.angle += (2 * Math.PI / p.period) * state.speed * DAYS_PER_FRAME_AT_1X;
     }
     p.px = cx + Math.cos(p.angle) * p.orbitR;
     p.py = cy + Math.sin(p.angle) * p.orbitR;
@@ -428,12 +458,17 @@ canvas.addEventListener('mousemove', e => {
     return Math.sqrt(dx*dx + dy*dy) <= Math.max(p.drawR, 8);
   });
   if (hit) {
+    const earthR    = PLANET_DATA.find(d => d.name === 'Terre').r;
+    const appRatio  = (hit.r / earthR).toFixed(hit.r / earthR >= 10 ? 0 : 1);
+    const realRatio = hit.realDiamRatio.toFixed(hit.realDiamRatio >= 10 ? 0 : 1);
+    const compressed = appRatio !== realRatio;
     tip.style.display = 'block';
     tip.style.left = `${e.clientX + 14}px`;
     tip.style.top  = `${e.clientY - 10}px`;
     tip.innerHTML  = `<strong>${hit.name}</strong>
-      <span>Distance : ~${hit.dist} M km</span>
-      <span>Révolution : ${hit.period} jours terrestres</span>`;
+      <span>Distance moyenne : ~${hit.dist} M km (position à l'écran : échelle log, pas réelle)</span>
+      <span>Révolution : ${hit.period} jours terrestres</span>
+      <span>Diamètre réel : ${realRatio}× la Terre${compressed ? ` (affiché ici : ${appRatio}×, compressé)` : ''}</span>`;
   } else {
     tip.style.display = 'none';
   }
