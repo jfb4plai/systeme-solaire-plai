@@ -348,13 +348,23 @@ function drawSun() {
 }
 
 function drawPlanets() {
+  // physique : indépendante de l'ordre, appliquée à toutes avant le rendu
   planets.forEach(p => {
     if (state.running) {
       p.angle += (2 * Math.PI / p.period) * state.speed * DAYS_PER_FRAME_AT_1X;
     }
     p.px = cx + Math.cos(p.angle) * p.orbitR;
     p.py = cy + Math.sin(p.angle) * p.orbitR;
+  });
 
+  // ordre de dessin : en mode "Tailles réelles", la plus grosse (Jupiter)
+  // en arrière-plan puis par taille décroissante, pour qu'une planète ne
+  // soit jamais totalement masquée par une autre dessinée après elle.
+  const order = state.trueScale
+    ? [...planets].sort((a, b) => b.drawR - a.drawR)
+    : planets;
+
+  order.forEach(p => {
     // orbite
     if (state.orbits) {
       ctx.beginPath();
@@ -364,7 +374,6 @@ function drawPlanets() {
       ctx.stroke();
     }
 
-
     // planète
     ctx.beginPath();
     ctx.arc(p.px, p.py, p.drawR, 0, Math.PI * 2);
@@ -373,7 +382,6 @@ function drawPlanets() {
     ctx.shadowBlur  = 6;
     ctx.fill();
     ctx.shadowBlur = 0;
-
 
     // nom
     if (state.labels) {
